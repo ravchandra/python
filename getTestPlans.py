@@ -2,42 +2,72 @@ import ast
 import itertools
 import os
 
-path = r"D:\work\cloudstack\repo\internal-cloudstack\test\integration\smoke"
-os.chdir(path)
-for st in os.listdir(path):
-    if os.path.isdir(st):
-        continue
 
-    print('Filename : '+st)
-    print('-----------------------------------------\n')
+def generate_test_plans(path):
+    print("--------------------- Path --------------------\n")
+    print(path)
+    print("\n")
+    os.chdir(path)
+    for st in os.listdir(path):
+        try:
+            if os.path.isdir(st):
+                continue
 
-    with open(st) as fd:
-        file_contents = fd.read()
-    with open(st) as fd:
-        file_lines = fd.readlines()
+            # print("File name : " + path + "\\" + st)
+            print("File name : " + st)
+            print("-----------------------------------------\n")
 
-    module = ast.parse(file_contents)
-    nodes = (node.body for node in module.body if isinstance(node, ast.ClassDef))
-    function_definitions = [fun for fun in list(itertools.chain.from_iterable(nodes))
-                            if isinstance(fun, ast.FunctionDef) and 'test_' in fun.name]
+            with open(st) as fd:
+                file_contents = fd.read()
+            with open(st) as fd:
+                file_lines = fd.readlines()
 
-    for i, f in enumerate(function_definitions):
+            module = ast.parse(file_contents)
+            nodes = (node.body for node in module.body
+                     if isinstance(node, ast.ClassDef))
+            function_definitions = [fun for fun in
+                                    list(itertools.chain.from_iterable(nodes))
+                                    if isinstance(fun, ast.FunctionDef)
+                                    and "test_" in fun.name]
 
-        n = i+1
-        if n<len(function_definitions):
-            nextline = function_definitions[n].lineno
-        else:
-            nextline = len(file_lines)
+            for i, f in enumerate(function_definitions):
 
-        print('---- function ----')
-        print(f.name)
-        print('\n')
-        print('---- description ----')
-        print(ast.get_docstring(f))
+                n = i+1
+                doc_string = ast.get_docstring(f)
 
-        # Single line comments
-        for li in file_lines[f.lineno:nextline]:
-            if li.strip().startswith('#'):
-                print(li.strip())
+                if n<len(function_definitions):
+                    next_line = function_definitions[n].lineno
+                else:
+                    next_line = len(file_lines)
 
-    print "\n"
+                print("---- function ----")
+                print(f.name)
+                print("\n")
+
+                print("---- description ----")
+                print(doc_string)
+                print("\n")
+
+                # Single line comments
+                print("---- comments ----")
+                if doc_string is not None:
+                    comment_start_line = f.lineno + doc_string.count("\n") + 1
+                else:
+                    comment_start_line = f.lineno + 1
+                for li in file_lines[comment_start_line:next_line]:
+                    if li.strip().startswith("#"):
+                        print(li.strip())
+                print("\n")
+        except Exception as e:
+            print(repr(e))
+            print("Exception in file")
+            print(st)
+
+
+paths = [r"D:\work\cloudstack\repo\internal-cloudstack\test\integration\smoke",
+         #r"D:\work\cloudstack\repo\internal-cloudstack\test\integration\component\maint",
+         #r"D:\work\cloudstack\repo\internal-cloudstack\test\integration\smoke\misc",
+         r"D:\work\cloudstack\repo\internal-cloudstack\test\integration\component"]
+
+for p in paths:
+    generate_test_plans(p)
