@@ -1,4 +1,5 @@
 import argparse
+import logging
 import pexpect
 import subprocess
 import sys
@@ -6,6 +7,22 @@ import sys
 import time
 import pdb
 #pdb.set_trace()
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+formatter1 = logging.Formatter('%(asctime)s - %(name)s -\
+ %(pathname)s - %(funcName)s - %(lineno)s - %(levelname)s - %(message)s')
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(formatter1)
+logger.addHandler(ch)
+
+fh = logging.FileHandler('test.log')
+fh.setLevel(logging.DEBUG)
+fh.setFormatter(formatter1)
+logger.addHandler(fh)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("host", help="provide host name", nargs="?",
@@ -16,7 +33,7 @@ parser.add_argument("command", help="provide command")
 args = parser.parse_args()
 
 cmd_list  = (
-                ("shellcopy", ("scp a.txt root@localhost:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
+                ("myscp", ("scp a.txt root@localhost:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
                 ("remove", ("rm -i cfiles/a.txt"), (u".*rm: remove.*\?", u"yes")),
              )
 
@@ -35,8 +52,9 @@ class RemoteCommand(object):
 
 class NonInteractive(RemoteCommand):
     def exec_cmd(self):
-        print "Executing command {0}".format(self.command),
-        print "on host {0}".format(self.host)
+        logger.info("non-interactive")
+        logger.info("Executing COMMAND {0}".format(self.command) +
+                " - on HOST {0}".format(self.host))
         ssh = subprocess.Popen(["ssh", "%s" % self.host, self.command],
                                           shell=False,
                             stdout=subprocess.PIPE,
@@ -44,15 +62,16 @@ class NonInteractive(RemoteCommand):
         result = ssh.stdout.readlines()
         if result == []:
             error = ssh.stderr.readlines()
-            print "ERROR: {0}".format(error)
+            logger.error("ERROR: {0}".format(error))
         else:
-            print "OUTPUT: {0}".format(result)
+            logger.info("OUTPUT: {0}".format(result))
 
 class Interactive(RemoteCommand):
     def exec_cmd_interactive(self):
-        print "interactive"
+        logger.info("interactive")
         cur_cmd = icmd
-        print cur_cmd
+        logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
+                " - on HOST {0}".format(self.host))
         c = pexpect.spawnu(cur_cmd[1])
         c.expect(cur_cmd[2][0])
         c.sendline(cur_cmd[2][1])
@@ -60,9 +79,10 @@ class Interactive(RemoteCommand):
         c.kill(1)
 
     def exec_cmd_interactive_all(self):
-        print "interactive all"
+        logger.info("interactive all")
         for cur_cmd in cmd_list:
-            print cur_cmd
+            logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
+                " - on HOST {0}".format(self.host))
             c = pexpect.spawnu(cur_cmd[1])
             c.expect(cur_cmd[2][0])
             c.sendline(cur_cmd[2][1])
