@@ -35,6 +35,7 @@ args = parser.parse_args()
 cmd_list  = (
                 ("myscp", ("scp a.txt root@localhost:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
                 ("remove", ("rm -i cfiles/a.txt"), (u".*rm: remove.*\?", u"yes")),
+                ("myscp2", ("scp a.txt root@127.0.0.1:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
              )
 
 interactive = False
@@ -43,6 +44,7 @@ for i in cmd_list:
     if args.command in i[0]:
         interactive = True
         icmd = i
+        break
 
 
 class RemoteCommand(object):
