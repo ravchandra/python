@@ -3,6 +3,8 @@ import logging
 import pexpect
 import subprocess
 import sys
+import getpass
+from pexpect import pxssh
 
 import time
 import pdb
@@ -24,12 +26,22 @@ fh.setLevel(logging.DEBUG)
 fh.setFormatter(formatter1)
 logger.addHandler(fh)
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description="Noninteractive and Interactive \
+        command excution. Must provide all the details in cmd_list inside the \
+        file shell.py for \
+        interactive commands. host is an optional argument applicable only for \
+        Non-interactive commands")
+
 parser.add_argument("host", help="provide host name", nargs="?",
         default="localhost")
 parser.add_argument("command", help="provide command")
 #parser.add_argument("cmd_type", nargs='?',
 #        help="provide i for interactive, n for non-interactive", default="n")
+
+if len(sys.argv) < 2:
+    parser.print_help()
+    sys.exit(1)
+
 args = parser.parse_args()
 
 cmd_list  = (
@@ -74,7 +86,7 @@ class Interactive(RemoteCommand):
         cur_cmd = icmd
         logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
                 " - on HOST {0}".format(self.host))
-        c = pexpect.spawnu(cur_cmd[1])
+        c = pexpect.spawn(cur_cmd[1])
         c.expect(cur_cmd[2][0])
         c.sendline(cur_cmd[2][1])
         c.wait()
@@ -85,13 +97,36 @@ class Interactive(RemoteCommand):
         for cur_cmd in cmd_list:
             logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
                 " - on HOST {0}".format(self.host))
-            c = pexpect.spawnu(cur_cmd[1])
+            c = pexpect.spawn(cur_cmd[1])
             c.expect(cur_cmd[2][0])
             c.sendline(cur_cmd[2][1])
             c.wait()
             time.sleep(10)
         c.kill(1)
 
+    def exec_ssh(self):
+        try:
+            s = pxssh.pxssh()
+            hostname = raw_input('hostname: ')
+            username = raw_input('username: ')
+            password = getpass.getpass('password: ')
+            s.login(hostname, username, password)
+            s.sendline('uptime')   # run a command
+            s.prompt()             # match the prompt
+            print(s.before)        # print everything before the prompt.
+            s.sendline('ls -l')
+            s.prompt()
+            print(s.before)
+            s.sendline('df')
+            s.prompt()
+            print(s.before)
+            s.sendline('pwd')
+            s.prompt()
+            print(s.before)
+            s.logout()
+        except pxssh.ExceptionPxssh as e:
+            print("pxssh failed on login.")
+            print(e)
 
 if not interactive and args.command != 'all':
     n = NonInteractive(command=args.command, host=args.host)
@@ -102,3 +137,9 @@ elif args.command != 'all':
 else:
     i = Interactive(command=args.command, host=args.host)
     i.exec_cmd_interactive_all()
+
+'''
+# pxssh
+i = Interactive(command=args.command, host=args.host)
+i.exec_ssh()
+'''
