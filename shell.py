@@ -28,8 +28,6 @@ logger.addHandler(fh)
 
 parser = argparse.ArgumentParser(description="Noninteractive and Interactive \
         command excution. Must provide all the details in cmd_list inside the \
-        file shell.py for \
-        interactive commands. host is an optional argument applicable only for \
         Non-interactive commands")
 
 parser.add_argument("host", help="provide host name", nargs="?",
@@ -48,6 +46,7 @@ cmd_list  = (
                 ("myscp", ("scp a.txt root@localhost:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
                 ("remove", ("rm -i cfiles/a.txt"), (u".*rm: remove.*\?", u"yes")),
                 ("myscp2", ("scp a.txt root@127.0.0.1:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
+                ("testshell", "python testshell.py",(u"operation","add"),(u"number1","6"),(u"number2","7"),(u"(\d)+",""),(u"(\d)+",""))
              )
 
 interactive = False
@@ -87,8 +86,12 @@ class Interactive(RemoteCommand):
         logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
                 " - on HOST {0}".format(self.host))
         c = pexpect.spawn(cur_cmd[1])
-        c.expect(cur_cmd[2][0])
-        c.sendline(cur_cmd[2][1])
+        for i in cur_cmd[2:]:
+            c.expect(i[0])
+            if i[1] != "":
+                c.sendline(i[1])
+            logger.info(c.before)
+            logger.info(c.after)
         c.wait()
         c.kill(1)
 
@@ -98,8 +101,12 @@ class Interactive(RemoteCommand):
             logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
                 " - on HOST {0}".format(self.host))
             c = pexpect.spawn(cur_cmd[1])
-            c.expect(cur_cmd[2][0])
-            c.sendline(cur_cmd[2][1])
+            for i in cur_cmd[2:]:
+                c.expect(i[0])
+                if i[1] != "":
+                    c.sendline(i[1])
+                logger.info(c.before)
+                logger.info(c.after)
             c.wait()
             time.sleep(10)
         c.kill(1)
@@ -107,9 +114,9 @@ class Interactive(RemoteCommand):
     def exec_ssh(self):
         try:
             s = pxssh.pxssh()
-            hostname = raw_input('hostname: ')
-            username = raw_input('username: ')
-            password = getpass.getpass('password: ')
+            hostname = self.hostname
+            username = self.username
+            password = self.password
             s.login(hostname, username, password)
             s.sendline('uptime')   # run a command
             s.prompt()             # match the prompt
@@ -127,7 +134,6 @@ class Interactive(RemoteCommand):
         except pxssh.ExceptionPxssh as e:
             print("pxssh failed on login.")
             print(e)
-
 if not interactive and args.command != 'all':
     n = NonInteractive(command=args.command, host=args.host)
     n.exec_cmd()
