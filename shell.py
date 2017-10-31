@@ -1,38 +1,26 @@
 import argparse
-import logging
 import pexpect
 import subprocess
 import sys
-import getpass
-from pexpect import pxssh
-
 import time
-import pdb
-#pdb.set_trace()
+from pexpect import pxssh
+import getpass
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+import log
 
-formatter1 = logging.Formatter('%(asctime)s - %(name)s -\
- %(pathname)s - %(funcName)s - %(lineno)s - %(levelname)s - %(message)s')
-
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-ch.setFormatter(formatter1)
-logger.addHandler(ch)
-
-fh = logging.FileHandler('test.log')
-fh.setLevel(logging.DEBUG)
-fh.setFormatter(formatter1)
-logger.addHandler(fh)
+logger = log.logger
 
 parser = argparse.ArgumentParser(description="Noninteractive and Interactive \
         command excution. Must provide all the details in cmd_list inside the \
         Non-interactive commands")
 
+parser.add_argument("command", help="provide command")
 parser.add_argument("host", help="provide host name", nargs="?",
         default="localhost")
-parser.add_argument("command", help="provide command")
+parser.add_argument("username", help="provide user name", nargs="?",
+        default="root")
+parser.add_argument("password", help="provide password", nargs="?",
+        default="netsim")
 #parser.add_argument("cmd_type", nargs='?',
 #        help="provide i for interactive, n for non-interactive", default="n")
 
@@ -43,10 +31,15 @@ if len(sys.argv) < 2:
 args = parser.parse_args()
 
 cmd_list  = (
-                ("myscp", ("scp a.txt root@localhost:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
-                ("remove", ("rm -i cfiles/a.txt"), (u".*rm: remove.*\?", u"yes")),
-                ("myscp2", ("scp a.txt root@127.0.0.1:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
-                ("testshell", "python testshell.py",(u"operation","add"),(u"number1","6"),(u"number2","7"),(u"(\d)+",""),(u"(\d)+",""))
+        #("myscp", ("scp a.txt root@localhost:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
+        #       ("remove", ("rm -i cfiles/a.txt"), (u".*rm: remove.*\?", u"yes")),
+        #        ("myscp2", ("scp a.txt root@127.0.0.1:/home/netsim/ravi/cfiles"),(u".*password:","netsim")),
+                ("testshell1", "python testshell.py", (u"operation","add"), \
+                    (u"number1","26"),(u"number2","37"),(u"(\d)+",""),(u"(\d)+","")),
+                ("testshell2", "python testshell.py", (u"operation","sub"), \
+                    (u"number1","56"),(u"number2","14"),(u"(\d)+",""),(u"(\d)+","")),
+                ("testshell3", "python testshell.py", \
+                    (u"operation","mul"),(u"number1","65"),(u"number2","75"),(u"(\d)+",""),(u"(\d)+","")),
              )
 
 interactive = False
@@ -59,9 +52,11 @@ for i in cmd_list:
 
 
 class RemoteCommand(object):
-    def __init__(self, command, host):
+    def __init__(self, command, host, username, password):
         self.command = command
         self.host = host
+        self.username = username
+        self.password = password
 
 class NonInteractive(RemoteCommand):
     def exec_cmd(self):
@@ -80,72 +75,54 @@ class NonInteractive(RemoteCommand):
             logger.info("OUTPUT: {0}".format(result))
 
 class Interactive(RemoteCommand):
-    def exec_cmd_interactive(self):
-        logger.info("interactive")
+    def exec_remote(self, s):
+        logger.info("remote interactive")
         cur_cmd = icmd
         logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
                 " - on HOST {0}".format(self.host))
-        c = pexpect.spawn(cur_cmd[1])
+        s.sendline(cur_cmd[1])
         for i in cur_cmd[2:]:
-            c.expect(i[0])
+            s.expect(i[0])
             if i[1] != "":
-                c.sendline(i[1])
-            logger.info(c.before)
-            logger.info(c.after)
-        c.wait()
-        c.kill(1)
+                s.sendline(i[1])
+            logger.info(s.before)
+            logger.info(s.after)
 
-    def exec_cmd_interactive_all(self):
-        logger.info("interactive all")
+    def exec_remote_all(self, s):
+        logger.info("remote interactive all")
         for cur_cmd in cmd_list:
             logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
-                " - on HOST {0}".format(self.host))
-            c = pexpect.spawn(cur_cmd[1])
+                    " - on HOST {0}".format(self.host))
+            s.sendline(cur_cmd[1])
             for i in cur_cmd[2:]:
-                c.expect(i[0])
+                s.expect(i[0])
                 if i[1] != "":
-                    c.sendline(i[1])
-                logger.info(c.before)
-                logger.info(c.after)
-            c.wait()
-            time.sleep(10)
-        c.kill(1)
+                    s.sendline(i[1])
+                logger.info(s.before)
+                logger.info(s.after)
 
-    def exec_ssh(self):
+    def remote(self):
         try:
+            logger.info("remote")
             s = pxssh.pxssh()
-            hostname = self.hostname
+            hostname = self.host
             username = self.username
             password = self.password
-            s.login(hostname, username, password)
-            s.sendline('uptime')   # run a command
-            s.prompt()             # match the prompt
-            print(s.before)        # print everything before the prompt.
-            s.sendline('ls -l')
-            s.prompt()
-            print(s.before)
-            s.sendline('df')
-            s.prompt()
-            print(s.before)
-            s.sendline('pwd')
-            s.prompt()
-            print(s.before)
+            s.login (hostname, username, password)
+            if args.command != "all":
+                self.exec_remote(s=s)
+            else:
+                self.exec_remote_all(s=s)
             s.logout()
-        except pxssh.ExceptionPxssh as e:
-            print("pxssh failed on login.")
-            print(e)
-if not interactive and args.command != 'all':
-    n = NonInteractive(command=args.command, host=args.host)
-    n.exec_cmd()
-elif args.command != 'all':
-    i = Interactive(command=args.command, host=args.host)
-    i.exec_cmd_interactive()
-else:
-    i = Interactive(command=args.command, host=args.host)
-    i.exec_cmd_interactive_all()
+        except pxssh.ExceptionPxssh, e:
+            print "pxssh failed on login."
+            print str(e)
 
-'''
-# pxssh
-i = Interactive(command=args.command, host=args.host)
-i.exec_ssh()
-'''
+if not interactive and args.command != "all":
+    n = NonInteractive(command=args.command, host=args.host, \
+            username=args.username, password=args.password)
+    n.exec_cmd()
+else:
+    i = Interactive(command=args.command, host=args.host,  \
+            username=args.username, password=args.password)
+    i.remote()
