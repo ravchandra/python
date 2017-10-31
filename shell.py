@@ -67,7 +67,7 @@ class Interactive(RemoteCommand):
     def remote(self):
         try:
             logger.info("remote")
-            s = pxssh.pxssh()
+            s = pxssh.pxssh(timeout=5)
             hostname = self.host
             username = self.username
             password = self.password
@@ -77,8 +77,12 @@ class Interactive(RemoteCommand):
             else:
                 self.exec_remote_all(s=s)
             s.logout()
-        except Exception:
+        except pxssh.ExceptionPxssh as e:
             logger.error("ssh failed on login.")
+        except pexpect.exceptions.TIMEOUT as e:
+            logger.error("request timed out")
+        except Exception as e:
+            logger.error(str(e))
 
     def exec_remote(self, s):
         logger.info("remote interactive")
