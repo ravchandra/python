@@ -4,10 +4,8 @@ import subprocess
 import sys
 from pexpect import pxssh
 
-import log
+from log import logger
 from remote_commands import cmd_list
-
-logger = log.logger
 
 parser = argparse.ArgumentParser(description="Noninteractive and Interactive \
         command excution. Must provide all the details in cmd_list inside the \
