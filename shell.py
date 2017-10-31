@@ -2,12 +2,10 @@ import argparse
 import pexpect
 import subprocess
 import sys
-import time
 from pexpect import pxssh
-import getpass
-from remote_commands import cmd_list
 
 import log
+from remote_commands import cmd_list
 
 logger = log.logger
 
@@ -49,21 +47,41 @@ class RemoteCommand(object):
 
 class NonInteractive(RemoteCommand):
     def exec_cmd(self):
-        logger.info("non-interactive")
-        logger.info("Executing COMMAND {0}".format(self.command) +
-                " - on HOST {0}".format(self.host))
-        ssh = subprocess.Popen(["ssh", "%s" % self.host, self.command],
-                                          shell=False,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-        result = ssh.stdout.readlines()
-        if result == []:
-            error = ssh.stderr.readlines()
-            logger.error("ERROR: {0}".format(error))
-        else:
-            logger.info("OUTPUT: {0}".format(result))
+        try:
+            logger.info("non-interactive")
+            logger.info("Executing COMMAND {0}".format(self.command) +
+                    " - on HOST {0}".format(self.host))
+            ssh = subprocess.Popen(["ssh", "%s" % self.host, self.command],
+                                            shell=False,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+            result = ssh.stdout.readlines()
+            if result == []:
+                error = ssh.stderr.readlines()
+                #logger.error("ERROR: {0}".format(error))
+                logger.error("ssh failed on login.")
+            else:
+                logger.info("OUTPUT: {0}".format(result))
+        except:
+            logger.error("ssh failed on login.")
 
 class Interactive(RemoteCommand):
+    def remote(self):
+        try:
+            logger.info("remote")
+            s = pxssh.pxssh()
+            hostname = self.host
+            username = self.username
+            password = self.password
+            s.login(hostname, username, password)
+            if args.command != "all":
+                self.exec_remote(s=s)
+            else:
+                self.exec_remote_all(s=s)
+            s.logout()
+        except Exception:
+            logger.error("ssh failed on login.")
+
     def exec_remote(self, s):
         logger.info("remote interactive")
         cur_cmd = icmd
@@ -90,22 +108,6 @@ class Interactive(RemoteCommand):
                 logger.info(s.before)
                 logger.info(s.after)
 
-    def remote(self):
-        try:
-            logger.info("remote")
-            s = pxssh.pxssh()
-            hostname = self.host
-            username = self.username
-            password = self.password
-            s.login (hostname, username, password)
-            if args.command != "all":
-                self.exec_remote(s=s)
-            else:
-                self.exec_remote_all(s=s)
-            s.logout()
-        except pxssh.ExceptionPxssh, e:
-            print "pxssh failed on login."
-            print str(e)
 
 if not interactive and args.command != "all":
     n = NonInteractive(command=args.command, host=args.host, \
