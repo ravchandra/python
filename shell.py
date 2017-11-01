@@ -8,10 +8,15 @@ from log import logger
 from remote_commands import cmd_list
 
 parser = argparse.ArgumentParser(description="Noninteractive and Interactive \
-        command excution. Must provide all the details in cmd_list inside the \
-        Non-interactive commands")
+        command execution. Must provide all the details in cmd_list \
+		in remote_commands.py for interactive commands.")
 
-parser.add_argument("command", help="provide command")
+parser.add_argument("command", help="provide command. If interactive, \
+should be one of commands in remote_commands.py or all which would \
+execute every command in remote_commands.py one after another. e.g.\n \
+python shell.py testshell1 127.0.0.1 root password \n \
+python shell.py all 127.0.0.1 root password")
+
 parser.add_argument("host", help="provide host name", nargs="?",
         default="localhost")
 parser.add_argument("username", help="provide user name", nargs="?",
@@ -35,7 +40,6 @@ for i in cmd_list:
         icmd = i
         break
 
-
 class RemoteCommand(object):
     def __init__(self, command, host, username, password):
         self.command = command
@@ -43,27 +47,6 @@ class RemoteCommand(object):
         self.username = username
         self.password = password
 
-class NonInteractive(RemoteCommand):
-    def exec_cmd(self):
-        try:
-            logger.info("non-interactive")
-            logger.info("Executing COMMAND {0}".format(self.command) +
-                    " - on HOST {0}".format(self.host))
-            ssh = subprocess.Popen(["ssh", "%s" % self.host, self.command],
-                                            shell=False,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-            result = ssh.stdout.readlines()
-            if result == []:
-                error = ssh.stderr.readlines()
-                #logger.error("ERROR: {0}".format(error))
-                logger.error("ssh failed on login.")
-            else:
-                logger.info("OUTPUT: {0}".format(result))
-        except:
-            logger.error("ssh failed on login.")
-
-class Interactive(RemoteCommand):
     def remote(self):
         try:
             logger.info("remote")
@@ -72,7 +55,9 @@ class Interactive(RemoteCommand):
             username = self.username
             password = self.password
             s.login(hostname, username, password)
-            if args.command != "all":
+            if not interactive and args.command != "all":
+                self.exec_remote_normal(s=s)
+            elif args.command != "all":
                 self.exec_remote(s=s)
             else:
                 self.exec_remote_all(s=s)
@@ -110,12 +95,15 @@ class Interactive(RemoteCommand):
                 logger.info(s.before)
                 logger.info(s.after)
 
+    def exec_remote_normal(self,s):
+        logger.info("remote non-interactive")
+        cur_cmd = self.command
+        logger.info("Executing COMMAND {0}".format(cur_cmd) +
+                " - on HOST {0}".format(self.host))
+        s.sendline(cur_cmd)
+        s.prompt()
+        logger.info(s.before)
 
-if not interactive and args.command != "all":
-    n = NonInteractive(command=args.command, host=args.host, \
+i = RemoteCommand(command=args.command, host=args.host,  \
             username=args.username, password=args.password)
-    n.exec_cmd()
-else:
-    i = Interactive(command=args.command, host=args.host,  \
-            username=args.username, password=args.password)
-    i.remote()
+i.remote()
