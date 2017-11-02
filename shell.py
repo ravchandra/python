@@ -1,37 +1,15 @@
-import argparse
 import pexpect
 import subprocess
-import sys
 from pexpect import pxssh
 
 from log import logger
 from remote_commands import cmd_list
 
-parser = argparse.ArgumentParser(description="Noninteractive and Interactive \
-        command execution. Must provide all the details in cmd_list \
-		in remote_commands.py for interactive commands.")
+import arguments
 
-parser.add_argument("command", help="provide command. If interactive, \
-should be one of commands in remote_commands.py or all which would \
-execute every command in remote_commands.py one after another. e.g.\n \
-python shell.py testshell1 127.0.0.1 root password \n \
-python shell.py all 127.0.0.1 root password")
+args = arguments.args
 
-parser.add_argument("host", help="provide host name", nargs="?",
-        default="localhost")
-parser.add_argument("username", help="provide user name", nargs="?",
-        default="root")
-parser.add_argument("password", help="provide password", nargs="?",
-        default="netsim")
-#parser.add_argument("cmd_type", nargs='?',
-#        help="provide i for interactive, n for non-interactive", default="n")
-
-if len(sys.argv) < 2:
-    parser.print_help()
-    sys.exit(1)
-
-args = parser.parse_args()
-
+# Setting command type to interactive if given command is found in cmd_list
 interactive = False
 icmd = None
 for i in cmd_list:
@@ -56,7 +34,7 @@ class RemoteCommand(object):
             password = self.password
             s.login(hostname, username, password)
             if not interactive and args.command != "all":
-                self.exec_remote_normal(s=s)
+                self.exec_remote_noninteractive(s=s)
             elif args.command != "all":
                 self.exec_remote(s=s)
             else:
@@ -95,7 +73,7 @@ class RemoteCommand(object):
                 logger.info(s.before)
                 logger.info(s.after)
 
-    def exec_remote_normal(self,s):
+    def exec_remote_noninteractive(self,s):
         logger.info("remote non-interactive")
         cur_cmd = self.command
         logger.info("Executing COMMAND {0}".format(cur_cmd) +
