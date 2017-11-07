@@ -1,4 +1,5 @@
 import argparse
+import logging
 import sys
 
 parser = argparse.ArgumentParser(description="Noninteractive and Interactive \
@@ -17,7 +18,12 @@ parser.add_argument("username", help="provide user name", nargs="?",
         default="root")
 parser.add_argument("password", help="provide password", nargs="?",
         default="netsim")
-
+parser.add_argument("timeout", help="provide timeout", nargs="?",
+        default=5)
+parser.add_argument("logfile", help="provide log file path", nargs="?",
+        default="runshell.log")
+parser.add_argument("loglevel", help="provide log level", nargs="?",
+        default=logging.INFO)
 if len(sys.argv) < 2:
     parser.print_help()
     sys.exit(1)

@@ -2,12 +2,14 @@ import pexpect
 import subprocess
 from pexpect import pxssh
 
-from log import logger
+from log import logger, set_logger
 from remote_commands import cmd_list
 
 import arguments
 
 args = arguments.args
+
+set_logger(logfile=args.logfile, loglevel=args.loglevel)
 
 # Setting command type to interactive if given command is found in cmd_list
 interactive = False
@@ -19,16 +21,24 @@ for i in cmd_list:
         break
 
 class RemoteCommand(object):
-    def __init__(self, command, host, username, password):
+    def __init__(self, command, host, username, password, timeout):
+        """
+        Initialize argument values
+        """
         self.command = command
         self.host = host
         self.username = username
         self.password = password
+        self.timeout = timeout
 
     def remote(self):
+        """
+        Create pxssh session and execute the command based on the type
+        i.e. interactive single, interactive all or non-interactive
+        """
         try:
             logger.info("remote")
-            s = pxssh.pxssh(timeout=5)
+            s = pxssh.pxssh(self.timeout)
             hostname = self.host
             username = self.username
             password = self.password
@@ -48,6 +58,9 @@ class RemoteCommand(object):
             logger.error(str(e))
 
     def exec_remote(self, s):
+        """
+        Execute a single interactive command
+        """
         logger.info("remote interactive")
         cur_cmd = icmd
         logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
@@ -61,6 +74,9 @@ class RemoteCommand(object):
             logger.info(s.after)
 
     def exec_remote_all(self, s):
+        """
+        Execute all interactive commands mentioned in cmd_list
+        """
         logger.info("remote interactive all")
         for cur_cmd in cmd_list:
             logger.info("Executing COMMAND {0}".format(cur_cmd[1]) +
@@ -74,6 +90,9 @@ class RemoteCommand(object):
                 logger.info(s.after)
 
     def exec_remote_noninteractive(self,s):
+        """
+        Execute a non-interactive command
+        """
         logger.info("remote non-interactive")
         cur_cmd = self.command
         logger.info("Executing COMMAND {0}".format(cur_cmd) +
@@ -83,5 +102,6 @@ class RemoteCommand(object):
         logger.info(s.before)
 
 i = RemoteCommand(command=args.command, host=args.host,  \
-            username=args.username, password=args.password)
+            username=args.username, password=args.password, \
+            timeout=args.timeout)
 i.remote()
