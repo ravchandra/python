@@ -22,7 +22,7 @@ parser.add_argument("timeout", help="provide timeout", nargs="?",
         default=5)
 parser.add_argument("logfile", help="provide log file path", nargs="?",
         default="runshell.log")
-parser.add_argument("loglevel", help="provide log level", nargs="?",
+parser.add_argument("loglevel", help="provide log level as number", nargs="?",
         default=logging.INFO)
 if len(sys.argv) < 2:
     parser.print_help()

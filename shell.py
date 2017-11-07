@@ -1,3 +1,4 @@
+import logging
 import pexpect
 import subprocess
 from pexpect import pxssh
@@ -8,8 +9,7 @@ from remote_commands import cmd_list
 import arguments
 
 args = arguments.args
-
-set_logger(logfile=args.logfile, loglevel=args.loglevel)
+set_logger(logfile=args.logfile, loglevel=int(args.loglevel))
 
 # Setting command type to interactive if given command is found in cmd_list
 interactive = False
@@ -29,7 +29,7 @@ class RemoteCommand(object):
         self.host = host
         self.username = username
         self.password = password
-        self.timeout = timeout
+        self.timeout = int(timeout)
 
     def remote(self):
         """
